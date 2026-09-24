@@ -1,0 +1,61 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:viewmodels="clr-namespace:Samostoyayka.ViewModels"
+             x:Class="Samostoyayka.MainPage">
+
+    <!-- Добавили отступ сверху (Padding) на 50, чтобы не прилипало к краю -->
+    <VerticalStackLayout Padding="30,50" Spacing="25">
+        <Label Text="Самостояйка!" FontSize="32" HorizontalOptions="Center" FontAttributes="Bold"/>
+        <!-- ПОЛЕ ВВОДА И КНОПКА -->
+        <HorizontalStackLayout Spacing="10" Margin="0,0,0,20">
+            <!-- Text связан со свойством NewTaskTitle во ViewModel -->
+            <Entry Text="{Binding NewTaskTitle}" Placeholder="Новая задача..." WidthRequest="250" />
+            <!-- Command связана с методом AddTaskCommand (MAUI сам добавляет слово Command к нашему методу) -->
+            <Button Text="+" Command="{Binding AddTaskCommand}" WidthRequest="50" FontAttributes="Bold" />
+        </HorizontalStackLayout>
+        <!-- ЗАГОЛОВОК И ПЕРВЫЙ СПИСОК -->
+        <Label Text="Осталось сделать:" FontSize="24" FontAttributes="Bold" TextColor="DarkOrange" />
+        <CollectionView ItemsSource="{Binding Chores}">
+            <CollectionView.ItemTemplate>
+                <DataTemplate>
+                    <HorizontalStackLayout Spacing="15" Padding="0, 10">
+                        <CheckBox IsChecked="{Binding IsCompleted}" />
+                        <!-- Добавили WidthRequest, чтобы текст не выталкивал кнопку за экран -->
+                        <Label Text="{Binding Title}" VerticalOptions="Center" FontSize="20" WidthRequest="200" />
+
+                        <!-- Кнопка удаления -->
+                        <!-- CommandParameter передает саму задачу в метод удаления -->
+                        <!-- Source={RelativeSource AncestorType={x:Type viewmodels:MainViewModel}} говорит кнопке искать команду во ViewModel, а не в самой задаче -->
+                        <Button Text="❌" 
+                                BackgroundColor="Transparent" 
+                                Command="{Binding Source={RelativeSource AncestorType={x:Type viewmodels:MainViewModel}}, Path=DeleteTaskCommand}"
+                                CommandParameter="{Binding .}" />
+                    </HorizontalStackLayout>
+                </DataTemplate>
+            </CollectionView.ItemTemplate>
+        </CollectionView>
+
+        <!-- ЗАГОЛОВОК И ВТОРОЙ СПИСОК -->
+        <!-- Добавили отступ сверху, чтобы отделить от первого списка -->
+        <Label Text="Готово:" FontSize="24" FontAttributes="Bold" TextColor="Green" Margin="0,20,0,0" />
+        <CollectionView ItemsSource="{Binding CompletedChores}">
+            <CollectionView.ItemTemplate>
+                <DataTemplate>
+                    <HorizontalStackLayout Spacing="15" Padding="0, 10">
+                        <CheckBox IsChecked="{Binding IsCompleted}" Color="Green"/>
+                        <Label Text="{Binding Title}" VerticalOptions="Center" FontSize="20" TextColor="Gray" TextDecorations="Strikethrough" WidthRequest="200" />
+
+                        <!-- Такая же кнопка удаления -->
+                        <Button Text="❌" 
+                                BackgroundColor="Transparent" 
+                                Command="{Binding Source={RelativeSource AncestorType={x:Type viewmodels:MainViewModel}}, Path=DeleteTaskCommand}"
+                                CommandParameter="{Binding .}" />
+                    </HorizontalStackLayout>
+                </DataTemplate>
+            </CollectionView.ItemTemplate>
+        </CollectionView>
+
+    </VerticalStackLayout>
+
+</ContentPage>
