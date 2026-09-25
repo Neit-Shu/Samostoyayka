@@ -1,63 +1,47 @@
 ﻿using System.Collections.ObjectModel;
 using System.ComponentModel;
-using CommunityToolkit.Mvvm.ComponentModel; // Добавили для ObservableObject
-using CommunityToolkit.Mvvm.Input;          // Добавили для [RelayCommand]
+using CommunityToolkit.Mvvm.ComponentModel;
+using CommunityToolkit.Mvvm.Input;
 using Samostoyayka.Models;
 using Samostoyayka.Services;
 
 namespace Samostoyayka.ViewModels
 {
-    // Наследуем от ObservableObject
     public partial class MainViewModel : ObservableObject
     {
-        public ObservableCollection<ChoreItem> Chores { get; set; }
-        public ObservableCollection<ChoreItem> CompletedChores { get; set; }
-
-        // Свойство для связи с полем ввода
-        [ObservableProperty]
-        private string newTaskTitle;
+        public ObservableCollection<ChoreItem> Chores { get; set; } = new();
+        public ObservableCollection<ChoreItem> CompletedChores { get; set; } = new();
 
         private DatabaseService _dbService;
 
-        
         public MainViewModel()
         {
-            Chores = new ObservableCollection<ChoreItem>();
-            CompletedChores = new ObservableCollection<ChoreItem>();
-
-            // Инициализируем базу данных
             _dbService = new DatabaseService();
-
-            // Загружаем данные
-            LoadData();
+            // Убрали LoadData отсюда, теперь экран сам будет просить данные
         }
 
-        private void LoadData()
+        // Этот метод будет вызываться каждый раз при показе экрана
+        public void RefreshData()
         {
-            // 1. Берем все задачи из базы
+            // Очищаем старые списки перед загрузкой новых данных
+            Chores.Clear();
+            CompletedChores.Clear();
+
             var allChores = _dbService.GetChores();
 
-            // 2. Если база совсем пустая (первый запуск), добавляем базовые задачи
+            // Если база пустая, добавляем тестовые
             if (allChores.Count == 0)
             {
-                var chore1 = new ChoreItem { Title = "Почистить зубы", IsCompleted = false };
-                var chore2 = new ChoreItem { Title = "Заправить постель", IsCompleted = false };
-                var chore3 = new ChoreItem { Title = "Собрать рюкзак", IsCompleted = false };
-
-                _dbService.SaveChore(chore1);
-                _dbService.SaveChore(chore2);
-                _dbService.SaveChore(chore3);
-
-                // Снова запрашиваем из базы, чтобы получить актуальный список
+                _dbService.SaveChore(new ChoreItem { Title = "Почистить зубы", IsCompleted = false });
+                _dbService.SaveChore(new ChoreItem { Title = "Заправить постель", IsCompleted = false });
+                _dbService.SaveChore(new ChoreItem { Title = "Собрать рюкзак", IsCompleted = false });
                 allChores = _dbService.GetChores();
             }
 
-            // 3. Раскидываем задачи по нашим двум спискам
+            // Распределяем задачи
             foreach (var chore in allChores)
             {
-                // Подписываемся на клики по галочкам
                 chore.PropertyChanged += OnChorePropertyChanged;
-
                 if (chore.IsCompleted)
                     CompletedChores.Add(chore);
                 else
@@ -72,7 +56,6 @@ namespace Samostoyayka.ViewModels
                 var chore = sender as ChoreItem;
                 if (chore != null)
                 {
-                    // ВАЖНО: Сохраняем новое состояние в базу данных!
                     _dbService.SaveChore(chore);
 
                     if (chore.IsCompleted)
@@ -88,55 +71,11 @@ namespace Samostoyayka.ViewModels
                 }
             }
         }
-        // Этот метод будет срабатывать при нажатии на кнопку
+
         [RelayCommand]
-        private void AddTask()
+        private async Task GoToSettings()
         {
-            // Проверяем, что поле не пустое
-            if (string.IsNullOrWhiteSpace(NewTaskTitle))
-                return;
-
-            // Создаем новую задачу
-            var newChore = new ChoreItem
-            {
-                Title = NewTaskTitle.Trim(),
-                IsCompleted = false
-            };
-
-            // Подписываемся на ее чекбокс
-            newChore.PropertyChanged += OnChorePropertyChanged;
-
-            // Сохраняем в базу данных
-            _dbService.SaveChore(newChore);
-
-            // Добавляем в верхний список на экране
-            Chores.Add(newChore);
-
-            // Очищаем поле ввода
-            NewTaskTitle = string.Empty;
-        }
-        // Команда принимает конкретную задачу (ChoreItem), которую нужно удалить
-        [RelayCommand]
-        private void DeleteTask(ChoreItem chore)
-        {
-            if (chore == null) return;
-
-            // 1. Удаляем из базы данных
-            _dbService.DeleteChore(chore);
-
-            // 2. Отписываемся от изменений, чтобы не было утечек памяти
-            chore.PropertyChanged -= OnChorePropertyChanged;
-
-            // 3. Удаляем из списков (проверяем, где она находится)
-            if (chore.IsCompleted)
-            {
-                CompletedChores.Remove(chore);
-            }
-            else
-            {
-                Chores.Remove(chore);
-            }
+            await Shell.Current.GoToAsync("SettingsPage");
         }
     }
-
 }
