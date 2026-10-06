@@ -2,6 +2,7 @@
 using System.ComponentModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using Microsoft.Maui.Storage; // Добавили для работы с Preferences
 using Samostoyayka.Models;
 using Samostoyayka.Services;
 
@@ -17,19 +18,33 @@ namespace Samostoyayka.ViewModels
         public MainViewModel()
         {
             _dbService = new DatabaseService();
-            // Убрали LoadData отсюда, теперь экран сам будет просить данные
         }
 
-        // Этот метод будет вызываться каждый раз при показе экрана
         public void RefreshData()
         {
-            // Очищаем старые списки перед загрузкой новых данных
             Chores.Clear();
             CompletedChores.Clear();
 
             var allChores = _dbService.GetChores();
 
-            // Если база пустая, добавляем тестовые
+            // === ПРОЦЕСС СБРОСА В ПОЛНОЧЬ ===
+            // Получаем дату последнего сброса (если ее нет, берется минимально возможная дата)
+            DateTime lastResetDate = Preferences.Default.Get("LastResetDate", DateTime.MinValue);
+            DateTime today = DateTime.Today;
+
+            // Если наступил новый день
+            if (today > lastResetDate)
+            {
+                foreach (var chore in allChores)
+                {
+                    chore.IsCompleted = false;   // Снимаем галочку
+                    _dbService.SaveChore(chore); // Обновляем в базе
+                }
+                // Запоминаем текущую дату, чтобы сегодня больше не сбрасывать
+                Preferences.Default.Set("LastResetDate", today);
+            }
+            // ================================
+
             if (allChores.Count == 0)
             {
                 _dbService.SaveChore(new ChoreItem { Title = "Почистить зубы", IsCompleted = false });
@@ -38,7 +53,6 @@ namespace Samostoyayka.ViewModels
                 allChores = _dbService.GetChores();
             }
 
-            // Распределяем задачи
             foreach (var chore in allChores)
             {
                 chore.PropertyChanged += OnChorePropertyChanged;
