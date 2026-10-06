@@ -89,7 +89,22 @@ namespace Samostoyayka.ViewModels
         [RelayCommand]
         private async Task GoToSettings()
         {
-            await Shell.Current.GoToAsync("SettingsPage");
+            // Вызываем системное окно для ввода текста (с цифровой клавиатурой)
+            string pin = await Shell.Current.DisplayPromptAsync(
+                "Родительский контроль",
+                "Введите ПИН-код (1234):",
+                keyboard: Keyboard.Numeric);
+
+            // Проверяем введенное значение
+            if (pin == "1234")
+            {
+                await Shell.Current.GoToAsync("SettingsPage");
+            }
+            else if (!string.IsNullOrEmpty(pin))
+            {
+                // Если ввели неправильно (и не нажали Отмена)
+                await Shell.Current.DisplayAlert("Ошибка", "Неверный ПИН-код", "ОК");
+            }
         }
     }
 }
