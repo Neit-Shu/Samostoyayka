@@ -16,6 +16,14 @@
 
         <Label Text="Самостояйка!" FontSize="32" HorizontalOptions="Center" FontAttributes="Bold"/>
 
+        <!-- Отображение стрик-счетчика (StringFormat сам подставит цифру вместо {0}) -->
+        <Label Text="{Binding StreakCount, StringFormat='🔥 Дней подряд: {0}'}" 
+               FontSize="20" 
+               HorizontalOptions="Center" 
+               TextColor="Red" 
+               FontAttributes="Bold"
+               Margin="0,-10,0,10" />
+
         <Label Text="Осталось сделать:" FontSize="24" FontAttributes="Bold" TextColor="DarkOrange" />
         <CollectionView ItemsSource="{Binding Chores}">
             <CollectionView.ItemTemplate>

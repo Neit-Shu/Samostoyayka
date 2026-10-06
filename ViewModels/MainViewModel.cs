@@ -2,7 +2,7 @@
 using System.ComponentModel;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using Microsoft.Maui.Storage; // Добавили для работы с Preferences
+using Microsoft.Maui.Storage;
 using Samostoyayka.Models;
 using Samostoyayka.Services;
 
@@ -12,6 +12,10 @@ namespace Samostoyayka.ViewModels
     {
         public ObservableCollection<ChoreItem> Chores { get; set; } = new();
         public ObservableCollection<ChoreItem> CompletedChores { get; set; } = new();
+
+        // Свойство счетчика дней
+        [ObservableProperty]
+        private int streakCount;
 
         private DatabaseService _dbService;
 
@@ -24,26 +28,30 @@ namespace Samostoyayka.ViewModels
         {
             Chores.Clear();
             CompletedChores.Clear();
-
             var allChores = _dbService.GetChores();
 
-            // === ПРОЦЕСС СБРОСА В ПОЛНОЧЬ ===
-            // Получаем дату последнего сброса (если ее нет, берется минимально возможная дата)
             DateTime lastResetDate = Preferences.Default.Get("LastResetDate", DateTime.MinValue);
             DateTime today = DateTime.Today;
 
-            // Если наступил новый день
             if (today > lastResetDate)
             {
+                // ПРОЦЕСС СБРОСА СТРИКА: Если последний раз все задачи выполнялись раньше, чем вчера
+                DateTime lastStreakDate = Preferences.Default.Get("LastStreakDate", DateTime.MinValue);
+                if (lastStreakDate < today.AddDays(-1))
+                {
+                    Preferences.Default.Set("StreakCount", 0);
+                }
+
                 foreach (var chore in allChores)
                 {
-                    chore.IsCompleted = false;   // Снимаем галочку
-                    _dbService.SaveChore(chore); // Обновляем в базе
+                    chore.IsCompleted = false;
+                    _dbService.SaveChore(chore);
                 }
-                // Запоминаем текущую дату, чтобы сегодня больше не сбрасывать
                 Preferences.Default.Set("LastResetDate", today);
             }
-            // ================================
+
+            // Загружаем текущий счетчик
+            StreakCount = Preferences.Default.Get("StreakCount", 0);
 
             if (allChores.Count == 0)
             {
@@ -56,10 +64,8 @@ namespace Samostoyayka.ViewModels
             foreach (var chore in allChores)
             {
                 chore.PropertyChanged += OnChorePropertyChanged;
-                if (chore.IsCompleted)
-                    CompletedChores.Add(chore);
-                else
-                    Chores.Add(chore);
+                if (chore.IsCompleted) CompletedChores.Add(chore);
+                else Chores.Add(chore);
             }
         }
 
@@ -76,6 +82,9 @@ namespace Samostoyayka.ViewModels
                     {
                         Chores.Remove(chore);
                         CompletedChores.Add(chore);
+
+                        // Проверяем, выполнил ли ребенок все задачи
+                        CheckStreak();
                     }
                     else
                     {
@@ -86,25 +95,32 @@ namespace Samostoyayka.ViewModels
             }
         }
 
+        // Метод: если список дел пуст, засчитываем день
+        private void CheckStreak()
+        {
+            if (Chores.Count == 0 && CompletedChores.Count > 0)
+            {
+                DateTime today = DateTime.Today;
+                DateTime lastStreakDate = Preferences.Default.Get("LastStreakDate", DateTime.MinValue);
+
+                // Засчитываем только если сегодня еще не прибавляли
+                if (lastStreakDate < today)
+                {
+                    StreakCount++;
+                    Preferences.Default.Set("StreakCount", StreakCount);
+                    Preferences.Default.Set("LastStreakDate", today);
+                }
+            }
+        }
+
         [RelayCommand]
         private async Task GoToSettings()
         {
-            // Вызываем системное окно для ввода текста (с цифровой клавиатурой)
             string pin = await Shell.Current.DisplayPromptAsync(
-                "Родительский контроль",
-                "Введите ПИН-код (1234):",
-                keyboard: Keyboard.Numeric);
+                "Родительский контроль", "Введите ПИН-код (1234):", keyboard: Keyboard.Numeric);
 
-            // Проверяем введенное значение
-            if (pin == "1234")
-            {
-                await Shell.Current.GoToAsync("SettingsPage");
-            }
-            else if (!string.IsNullOrEmpty(pin))
-            {
-                // Если ввели неправильно (и не нажали Отмена)
-                await Shell.Current.DisplayAlert("Ошибка", "Неверный ПИН-код", "ОК");
-            }
+            if (pin == "1234") await Shell.Current.GoToAsync("SettingsPage");
+            else if (!string.IsNullOrEmpty(pin)) await Shell.Current.DisplayAlert("Ошибка", "Неверный ПИН-код", "ОК");
         }
     }
 }
